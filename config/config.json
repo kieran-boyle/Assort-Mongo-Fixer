@@ -3,5 +3,9 @@
   "assortPaths": 
   [
     "/db/assort.json"
+  ],
+  "questAssortPaths":
+  [
+    "/db/questassort.json"
   ]
 }

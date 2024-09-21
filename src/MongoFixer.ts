@@ -86,6 +86,53 @@ class MongoFixer implements IPostDBLoadMod
       this.generateBackups(`changedItems/${fileTarget}`, [...this.changedAssortIds])
       this.writeUpdatedAssort(fullPath, importedJson)
     }
+
+    if(this.config.questAssortPaths.length > 0)
+    {
+      for(const file of this.config.questAssortPaths)
+      {
+        console.log(file)
+        const fileTarget = this.extractName(file)
+  
+        if(!fileTarget)
+        {
+          this.logger.error(`Error, file not found -- ${file}`)
+          return
+        }
+
+        const fullPath = `../../${this.config.folderPath}${file}`
+        const importedJson = require(fullPath)        
+        this.generateBackups(fileTarget, importedJson)
+        let start = importedJson.started
+        let successful = importedJson.success
+        let failed = importedJson.fail
+
+        let newStartData = {}
+        for(let item in start)
+        {
+          let newKey = this.changedAssortIds.get(item) || item
+          newStartData[newKey] = start[item]
+        }
+        importedJson.started = newStartData
+
+        let newSuccessData = {}
+        for(let item in successful)
+        {
+          let newKey = this.changedAssortIds.get(item) || item
+          newSuccessData[newKey] = successful[item]
+        }
+        importedJson.success = newSuccessData
+
+        let newFailData = {}
+        for(let item in failed)
+        {
+          let newKey = this.changedAssortIds.get(item) || item
+          newFailData[newKey] = failed[item]
+        }
+        importedJson.fail = newFailData
+        this.writeUpdatedAssort(fullPath, importedJson)
+      }
+    }
   }
 
   /**
