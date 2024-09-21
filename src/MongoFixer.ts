@@ -51,7 +51,6 @@ class MongoFixer implements IPostDBLoadMod
       {
         if(!this.validateMongo.test(item.parentId))
         {
-          //let target = this.findKeyByValue(this.changedAssortIds, item.parentID)
           if(!this.changedAssortIds.get(item.parentId) && item.parentId !== "hideout")
           {
             this.logger.error(`Warning parentID of ${item._id} is not a mongoID but is not in the new list of generated ID's!  Skipping!!`)
@@ -60,7 +59,29 @@ class MongoFixer implements IPostDBLoadMod
           item.parentId = this.changedAssortIds.get(item.parentId)
         }
       }
-      
+
+      //fix barter offers
+      let newBarterData = {}
+      const barter = importedJson.barter_scheme
+
+      for(let item in barter)
+      {
+        let newKey = this.changedAssortIds.get(item) || item
+        newBarterData[newKey] = barter[item]
+      }
+      importedJson.barter_scheme = newBarterData
+
+      //fix loyalty level unlocks.
+      let newUnlockData = {}
+      const unlocks = importedJson.loyal_level_items
+
+      for(let item in unlocks)
+      {
+        let newKey = this.changedAssortIds.get(item) || item
+        newUnlockData[newKey] = unlocks[item]
+      }
+      importedJson.loyal_level_items = newUnlockData
+
       this.logger.info(`${count} item ID's changed to MongoID's`)
       this.generateBackups(`changedItems/${fileTarget}`, [...this.changedAssortIds])
       this.writeUpdatedAssort(fullPath, importedJson)
