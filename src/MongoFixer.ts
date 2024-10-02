@@ -124,6 +124,7 @@ class MongoFixer implements IPostDBLoadMod
                 if (!this.validateMongo.test(quest))
                 {
                     newID = this.hashUtil.generate()
+					this.changedQuestIds.set(`${quest}`, newID)
                     quest = newID
                     thisQuest._id = newID
                     thisQuest.acceptPlayerMessage = thisQuest.acceptPlayerMessage.replace(/^\S+/, `${newID}`)
@@ -140,7 +141,14 @@ class MongoFixer implements IPostDBLoadMod
                     thisQuest.rewards = this.fixQuestRewards(thisQuest.rewards)
                 }
             }
-            this.writeUpdatedData(fullPath, importedJson)
+			this.generateBackups(`changedQuestIDs`, [...this.changedQuestIds])
+			let dataString = JSON.stringify(importedJson)
+
+			for(const [oldID, newID] of this.changedQuestIds.entries())
+			{
+				dataString.replace(`"${oldID}"`, `"${newID}"`)
+			}
+            this.writeUpdatedData(fullPath, JSON.parse(dataString))
         }
     }
 
@@ -153,26 +161,35 @@ class MongoFixer implements IPostDBLoadMod
     {
         for (let finishCondition of conditions.AvailableForFinish)
         {
-			console.log(finishCondition)
-            finishCondition.id = this.hashUtil.generate()
+			let newFinishID = this.hashUtil.generate()
+			this.changedQuestIds.set(`${finishCondition.id}`, newFinishID)
+            finishCondition.id = newFinishID
 			if(finishCondition.counter)
 			{
-				finishCondition.counter.id = this.hashUtil.generate()
+				let newCounterID = this.hashUtil.generate()
+				this.changedQuestIds.set(`${finishCondition.counter.id}`, newCounterID)
+				finishCondition.counter.id = newCounterID
 				for (let thisCondition of finishCondition.counter.conditions)
 				{
-					thisCondition.id = this.hashUtil.generate()
+					let newConditionID = this.hashUtil.generate()
+					this.changedQuestIds.set(`${thisCondition.id}`, newConditionID)
+					thisCondition.id = newConditionID
 				}
 			}
         }
 
         for (let startCondition of conditions.AvailableForStart)
         {
-            startCondition.id = this.hashUtil.generate()
+			let newStartID = this.hashUtil.generate()
+			this.changedQuestIds.set(`${startCondition.id}`, newStartID)
+            startCondition.id = newStartID
         }
 
         for (let failCondition of conditions.Fail)
         {
-            failCondition.id = this.hashUtil.generate()
+			let newFailID = this.hashUtil.generate()
+			this.changedQuestIds.set(`${failCondition.id}`, newFailID)
+            failCondition.id = newFailID
         }
         return conditions
     }
@@ -199,10 +216,13 @@ class MongoFixer implements IPostDBLoadMod
     {
         for (let reward of rewards)
         {
-            reward.id = this.hashUtil.generate()
+			let newRewardID = this.hashUtil.generate()
+			this.changedQuestIds.set(`${reward.id}`, newRewardID)
+            reward.id = newRewardID
             if (reward.items)
             {
                 let itemID = this.hashUtil.generate()
+				this.changedQuestIds.set(`${reward.items[0]._id}`, itemID)
                 reward.items[0]._id = itemID
                 reward.target = itemID
             }
