@@ -1,5 +1,6 @@
 {
-  "folderPath": "Lotus",
+  "fixAssorts": false,
+  "assortsFolderPath": "Lotus",
   "assortPaths": 
   [
     "/db/assort.json"
@@ -7,5 +8,11 @@
   "questAssortPaths":
   [
     "/db/questassort.json"
+  ],
+
+  "fixQuests": true,
+  "questsFolderPaths":
+  [
+    "/Lotus_quests.json"
   ]
 }
