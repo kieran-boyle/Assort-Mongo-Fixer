@@ -7,7 +7,7 @@ Add the paths for any questAssort.json files in your mod into the questAssortPat
 For example if your questAssort is in a folder called db in your main mod folder, and is called questAssort.json you would add "/db/questAssort.json" to the array.  Multiple assort files can be added, and must be comma seperated.
 
 This mod will loop through all assort.json files, scan for any items that have an ID that is not a valid Mongodb ID and will assign a new ID for it.
-It will then lop through again and update any non Mongodb parents to their new MongoID along with any barter_scheme, loyal_level_items and questAssorts
+It will then loop through again and update any non Mongodb parents to their new MongoID along with any barter_scheme, loyal_level_items and questAssorts
 
 A backup of your original json's will be saved in backups.
 
