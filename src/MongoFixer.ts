@@ -34,7 +34,7 @@ class MongoFixer implements IPostDBLoadMod
       }
       this.generateBackups(fileTarget, importedJson)
 
-      //Fix item ID's
+      //Fix item ID's.
       for(let item of importedJson.items)
       {
         if(!this.validateMongo.test(item._id))
@@ -46,91 +46,40 @@ class MongoFixer implements IPostDBLoadMod
         }
       }
 
-      //Fix parent ID's
+      //Fix parent ID's.
       for(let item of importedJson.items)
       {
         if(!this.validateMongo.test(item.parentId))
         {
-          if(!this.changedAssortIds.get(item.parentId) && item.parentId !== "hideout")
-          {
-            this.logger.error(`Warning parentID of ${item._id} is not a mongoID but is not in the new list of generated ID's!  Skipping!!`)
-            continue
-          }
           item.parentId = this.changedAssortIds.get(item.parentId)
         }
       }
-
-      //fix barter offers
-      let newBarterData = {}
-      const barter = importedJson.barter_scheme
-
-      for(let item in barter)
-      {
-        let newKey = this.changedAssortIds.get(item) || item
-        newBarterData[newKey] = barter[item]
-      }
-      importedJson.barter_scheme = newBarterData
-
-      //fix loyalty level unlocks.
-      let newUnlockData = {}
-      const unlocks = importedJson.loyal_level_items
-
-      for(let item in unlocks)
-      {
-        let newKey = this.changedAssortIds.get(item) || item
-        newUnlockData[newKey] = unlocks[item]
-      }
-      importedJson.loyal_level_items = newUnlockData
-
       this.logger.info(`${count} item ID's changed to MongoID's`)
-      this.generateBackups(`changedItems/${fileTarget}`, [...this.changedAssortIds])
+      this.generateBackups(`changedItems`, [...this.changedAssortIds])
+      importedJson.barter_scheme = this.setNewIDs(importedJson.barter_scheme)
+      importedJson.loyal_level_items = this.setNewIDs(importedJson.loyal_level_items)
       this.writeUpdatedAssort(fullPath, importedJson)
     }
 
+    //Fix quest assorts.
     if(this.config.questAssortPaths.length > 0)
     {
       for(const file of this.config.questAssortPaths)
       {
-        console.log(file)
         const fileTarget = this.extractName(file)
-  
+
         if(!fileTarget)
         {
           this.logger.error(`Error, file not found -- ${file}`)
           return
         }
-
-        const fullPath = `../../${this.config.folderPath}${file}`
-        const importedJson = require(fullPath)        
-        this.generateBackups(fileTarget, importedJson)
-        let start = importedJson.started
-        let successful = importedJson.success
-        let failed = importedJson.fail
-
-        let newStartData = {}
-        for(let item in start)
-        {
-          let newKey = this.changedAssortIds.get(item) || item
-          newStartData[newKey] = start[item]
-        }
-        importedJson.started = newStartData
-
-        let newSuccessData = {}
-        for(let item in successful)
-        {
-          let newKey = this.changedAssortIds.get(item) || item
-          newSuccessData[newKey] = successful[item]
-        }
-        importedJson.success = newSuccessData
-
-        let newFailData = {}
-        for(let item in failed)
-        {
-          let newKey = this.changedAssortIds.get(item) || item
-          newFailData[newKey] = failed[item]
-        }
-        importedJson.fail = newFailData
-        this.writeUpdatedAssort(fullPath, importedJson)
+        const questPath = `../../${this.config.folderPath}${file}`
+        const questJson = require(questPath)
+        this.generateBackups(fileTarget, questJson)
+        questJson.started = this.setNewIDs(questJson.started)
+        questJson.success = this.setNewIDs(questJson.success)
+        questJson.fail = this.setNewIDs(questJson.fail)
+        this.writeUpdatedAssort(questPath, questJson)
       }
     }
   }
@@ -148,6 +97,22 @@ class MongoFixer implements IPostDBLoadMod
   }
 
   /**
+   * Sets created MongoID's to target ID's.
+   * @param inputData Input data.
+   * @returns Modified json containing new MongoID's.
+   */
+  private setNewIDs(inputData :any):any
+  {
+    let modifiedData = {}
+    for(let item in inputData)
+    {
+      let newKey = this.changedAssortIds.get(item) || item
+      modifiedData[newKey] = inputData[item]
+    }
+    return modifiedData
+  }
+
+  /**
    * Generates a backup of provided .json in /backups.
    * @param name name for folder.
    * @param target target .json.
@@ -160,7 +125,7 @@ class MongoFixer implements IPostDBLoadMod
       if (err) throw err
     })
 
-    this.fs.appendFile(path.resolve(__dirname, `../backups/${name}/assort.json`), JSON.stringify(target, null, "\t"), (err) =>
+    this.fs.writeFile(path.resolve(__dirname, `../backups/${name}/assort.json`), JSON.stringify(target, null, "\t"), (err) =>
     {
       if (err) throw err
     })
