@@ -14,13 +14,31 @@ class MongoFixer implements IPostDBLoadMod
     private validateMongo = /^[a-f\d]{24}$/i
     private changedAssortIds = new Map()
 	private changedQuestIds = new Map()
+    private traderIDs = new Map()
 
     public postDBLoad(container: DependencyContainer): void
     {
+        this.container = container
+        this.logger = this.container.resolve<ILogger>('WinstonLogger')
+        this.hashUtil = this.container.resolve<HashUtil>("HashUtil")
+
         if (this.config.enableFixer !== true)
         {
             return
         }
+        
+        for (const file of this.config.baseJsonPaths)
+        {
+            const fullPath = `../../${this.config.assortsFolderPath}${file}`
+            const importedJson = require(fullPath)
+            let newID = this.hashUtil.generate()
+            this.traderIDs.set(importedJson._id, newID)
+            console.log(this.traderIDs)
+            importedJson._id = newID
+            this.writeUpdatedData(fullPath, importedJson)
+        }
+        this.generateBackups("traderIDs", "IDs", [...this.traderIDs])
+        
         if (this.config.fixAssorts === true)
         {
             this.fixAssorts(container)
@@ -34,10 +52,6 @@ class MongoFixer implements IPostDBLoadMod
 
     private fixAssorts(container: DependencyContainer):void
     {
-        this.container = container
-        this.logger = this.container.resolve<ILogger>('WinstonLogger')
-        this.hashUtil = this.container.resolve<HashUtil>("HashUtil")
-
         for (const file of this.config.assortPaths)
         {
             const fullPath = `../../${this.config.assortsFolderPath}${file}`
@@ -78,35 +92,10 @@ class MongoFixer implements IPostDBLoadMod
             importedJson.loyal_level_items = this.setNewAssortIDs(importedJson.loyal_level_items)
             this.writeUpdatedData(fullPath, importedJson)
         }
-
-        // Fix quest assorts.
-        if (this.config.questAssortPaths.length > 0)
-        {
-            for (const file of this.config.questAssortPaths)
-            {
-                const fileTarget = this.extractName(file)
-
-                if (!fileTarget)
-                {
-                    this.logger.error(`Error, file not found -- ${file}`)
-                    return
-                }
-                const questPath = `../../${this.config.assortsFolderPath}${file}`
-                const questJson = require(questPath)
-                this.generateBackups("quest assorts", fileTarget, questJson)
-                questJson.started = this.setNewAssortIDs(questJson.started)
-                questJson.success = this.setNewAssortIDs(questJson.success)
-                questJson.fail = this.setNewAssortIDs(questJson.fail)
-                this.writeUpdatedData(questPath, questJson)
-            }
-        }
     }
 
     private fixQuests(container: DependencyContainer):void
     {
-        this.container = container
-        this.logger = this.container.resolve<ILogger>('WinstonLogger')
-        this.hashUtil = this.container.resolve<HashUtil>("HashUtil")
         const questsPath = "../../Virtual's Custom Quest Loader/database/quests"
 
         for (const questJson of this.config.questsFolderPaths)
@@ -152,8 +141,42 @@ class MongoFixer implements IPostDBLoadMod
             {
                 dataString = dataString.replaceAll(`"${oldID}"`, `"${newID}"`)
             }
+            for(const [oldID, newID] of this.traderIDs.entries())
+            {
+                dataString = dataString.replaceAll(`"${oldID}"`, `"${newID}"`)
+            }
             let modifiedData = JSON.parse(dataString)
             this.writeUpdatedData(fullPath, modifiedData)
+            
+            // Fix quest assorts.
+            if (this.config.questAssortPaths.length > 0)
+            {
+                for (const file of this.config.questAssortPaths)
+                {
+                    const fileTarget = this.extractName(file)
+    
+                    if (!fileTarget)
+                    {
+                        this.logger.error(`Error, file not found -- ${file}`)
+                        return
+                    }
+                    const questPath = `../../${this.config.assortsFolderPath}${file}`
+                    const questJson = require(questPath)
+                    this.generateBackups("quest assorts", fileTarget, questJson)
+                    questJson.started = this.setNewAssortIDs(questJson.started)
+                    questJson.success = this.setNewAssortIDs(questJson.success)
+                    questJson.fail = this.setNewAssortIDs(questJson.fail)
+                    this.writeUpdatedData(questPath, questJson)
+                    let questAssortDataString = JSON.stringify(questJson)
+
+                    for(const [oldID, newID] of this.changedQuestIds.entries())
+                    {
+                        questAssortDataString = questAssortDataString.replaceAll(`"${oldID}"`, `"${newID}"`)
+                    }
+                    let modifiedQuestAssortData = JSON.parse(questAssortDataString)
+                    this.writeUpdatedData(questPath, modifiedQuestAssortData)
+                }
+            }
         }
     }
 

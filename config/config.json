@@ -2,6 +2,10 @@
   "enableFixer": true,
   "fixAssorts": true,
   "assortsFolderPath": "Lotus",
+  "baseJsonPaths":
+  [
+    "/db/base.json"
+  ],
   "assortPaths": 
   [
     "/db/assort.json"
