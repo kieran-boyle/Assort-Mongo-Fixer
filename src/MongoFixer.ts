@@ -32,7 +32,7 @@ class MongoFixer implements IPostDBLoadMod
         }
     }
 
-    private fixAssorts(container: DependencyContainer)
+    private fixAssorts(container: DependencyContainer):void
     {
         this.container = container
         this.logger = this.container.resolve<ILogger>('WinstonLogger')
@@ -102,13 +102,13 @@ class MongoFixer implements IPostDBLoadMod
         }
     }
 
-    private fixQuests(container: DependencyContainer)
+    private fixQuests(container: DependencyContainer):void
     {
         this.container = container
         this.logger = this.container.resolve<ILogger>('WinstonLogger')
         this.hashUtil = this.container.resolve<HashUtil>("HashUtil")
-
         const questsPath = "../../Virtual's Custom Quest Loader/database/quests"
+
         for (const questJson of this.config.questsFolderPaths)
         {
             const fullPath = `${questsPath}/${questJson}`
@@ -124,6 +124,7 @@ class MongoFixer implements IPostDBLoadMod
             for (let quest in importedJson)
             {
                 let thisQuest = importedJson[quest]
+
                 if (!this.validateMongo.test(quest))
                 {
                     let newID = this.generateAndSaveID(quest)
@@ -166,9 +167,11 @@ class MongoFixer implements IPostDBLoadMod
         for (let finishCondition of conditions.AvailableForFinish)
         {
             finishCondition.id = this.generateAndSaveID(finishCondition.id)
+
 			if(finishCondition.counter)
 			{
 				finishCondition.counter.id = this.generateAndSaveID(finishCondition.counter.id)
+
 				for (let thisCondition of finishCondition.counter.conditions)
 				{
 					thisCondition.id = this.generateAndSaveID(thisCondition.id)
@@ -199,6 +202,7 @@ class MongoFixer implements IPostDBLoadMod
         for (let failCondition of conditions.Fail)
         {
             failCondition.id = this.generateAndSaveID(failCondition.id)
+
             if(failCondition.visibilityConditions.length > 0)
             {
                 for(let visibilityCondition of failCondition.visibilityConditions)
@@ -233,6 +237,7 @@ class MongoFixer implements IPostDBLoadMod
         for (let reward of rewards)
         {
             reward.id = this.generateAndSaveID(reward.id)
+
             if (reward.items)
             {
                 reward.target = this.generateAndSaveID(reward.target)
@@ -274,6 +279,7 @@ class MongoFixer implements IPostDBLoadMod
     private setNewAssortIDs(inputData: any): any
     {
         let modifiedData = {}
+
         for (let item in inputData)
         {
             let newKey = this.changedAssortIds.get(item) || item
