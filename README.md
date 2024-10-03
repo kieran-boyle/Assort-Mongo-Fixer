@@ -22,7 +22,7 @@ Your mod assort files will then be overwritten with the new data!
 
 If you have a quest database to fix, set fixQuests to true in the config.
 
-Your quests file should be located in Virtual's Custom Quest Loader/database/quests.  Put the names of any jsons that need updating into the questsFolderPaths array.  So for example "/Lotus_quests.json"
+Your quests file should be located in Virtual's Custom Quest Loader/database/quests.  Put the names of any jsons that need updating into the questsFolderPaths array.  So for example "/Lotus_quests.json"  Multiple quest files can be added, and must be comma seperated.
 
 This mod will then loop through these files, replacing evrything necessary with their relevent mongo ID's.
 
