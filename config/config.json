@@ -1,5 +1,6 @@
 {
-  "fixAssorts": false,
+  "enableFixer": true,
+  "fixAssorts": true,
   "assortsFolderPath": "Lotus",
   "assortPaths": 
   [

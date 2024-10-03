@@ -17,6 +17,10 @@ class MongoFixer implements IPostDBLoadMod
 
     public postDBLoad(container: DependencyContainer): void
     {
+        if (this.config.enableFixer !== true)
+        {
+            return
+        }
         if (this.config.fixAssorts === true)
         {
             this.fixAssorts(container)
@@ -46,7 +50,7 @@ class MongoFixer implements IPostDBLoadMod
                 this.logger.error(`Error, file not found -- ${file}`)
                 return
             }
-            this.generateBackups(fileTarget, importedJson)
+            this.generateBackups("assorts", fileTarget, importedJson)
 
             // Fix item ID's.
             for (let item of importedJson.items)
@@ -69,7 +73,7 @@ class MongoFixer implements IPostDBLoadMod
                 }
             }
             this.logger.info(`${count} item ID's changed to MongoID's`)
-            this.generateBackups(`changedItems`, [...this.changedAssortIds])
+            this.generateBackups("changedItems", fileTarget, [...this.changedAssortIds])
             importedJson.barter_scheme = this.setNewAssortIDs(importedJson.barter_scheme)
             importedJson.loyal_level_items = this.setNewAssortIDs(importedJson.loyal_level_items)
             this.writeUpdatedData(fullPath, importedJson)
@@ -89,7 +93,7 @@ class MongoFixer implements IPostDBLoadMod
                 }
                 const questPath = `../../${this.config.assortsFolderPath}${file}`
                 const questJson = require(questPath)
-                this.generateBackups(fileTarget, questJson)
+                this.generateBackups("quest assorts", fileTarget, questJson)
                 questJson.started = this.setNewAssortIDs(questJson.started)
                 questJson.success = this.setNewAssortIDs(questJson.success)
                 questJson.fail = this.setNewAssortIDs(questJson.fail)
@@ -115,16 +119,14 @@ class MongoFixer implements IPostDBLoadMod
 				this.logger.error(`Error, file not found -- ${questJson}`)
 				return
 			}
-			this.generateBackups(fileTarget, importedJson)
+			this.generateBackups("quests", fileTarget, importedJson)
 
             for (let quest in importedJson)
             {
                 let thisQuest = importedJson[quest]
-                let newID: string
                 if (!this.validateMongo.test(quest))
                 {
-                    newID = this.hashUtil.generate()
-					this.changedQuestIds.set(`${quest}`, newID)
+                    let newID = this.generateAndSaveID(quest)
                     quest = newID
                     thisQuest._id = newID
                     thisQuest.acceptPlayerMessage = thisQuest.acceptPlayerMessage.replace(/^\S+/, `${newID}`)
@@ -141,14 +143,16 @@ class MongoFixer implements IPostDBLoadMod
                     thisQuest.rewards = this.fixQuestRewards(thisQuest.rewards)
                 }
             }
-			this.generateBackups(`changedQuestIDs`, [...this.changedQuestIds])
-			let dataString = JSON.stringify(importedJson)
+            this.logger.info(`${[...this.changedQuestIds].length} new Mongo ID's generated for ${fileTarget}!`)
+			this.generateBackups("changedQuestIDs", fileTarget, [...this.changedQuestIds])
+            let dataString = JSON.stringify(importedJson)
 
-			for(const [oldID, newID] of this.changedQuestIds.entries())
-			{
-				dataString.replace(`"${oldID}"`, `"${newID}"`)
-			}
-            this.writeUpdatedData(fullPath, JSON.parse(dataString))
+            for(const [oldID, newID] of this.changedQuestIds.entries())
+            {
+                dataString = dataString.replaceAll(`"${oldID}"`, `"${newID}"`)
+            }
+            let modifiedData = JSON.parse(dataString)
+            this.writeUpdatedData(fullPath, modifiedData)
         }
     }
 
@@ -161,35 +165,47 @@ class MongoFixer implements IPostDBLoadMod
     {
         for (let finishCondition of conditions.AvailableForFinish)
         {
-			let newFinishID = this.hashUtil.generate()
-			this.changedQuestIds.set(`${finishCondition.id}`, newFinishID)
-            finishCondition.id = newFinishID
+            finishCondition.id = this.generateAndSaveID(finishCondition.id)
 			if(finishCondition.counter)
 			{
-				let newCounterID = this.hashUtil.generate()
-				this.changedQuestIds.set(`${finishCondition.counter.id}`, newCounterID)
-				finishCondition.counter.id = newCounterID
+				finishCondition.counter.id = this.generateAndSaveID(finishCondition.counter.id)
 				for (let thisCondition of finishCondition.counter.conditions)
 				{
-					let newConditionID = this.hashUtil.generate()
-					this.changedQuestIds.set(`${thisCondition.id}`, newConditionID)
-					thisCondition.id = newConditionID
+					thisCondition.id = this.generateAndSaveID(thisCondition.id)
 				}
 			}
+            if(finishCondition.visibilityConditions.length > 0)
+            {
+                for(let visibilityCondition of finishCondition.visibilityConditions)
+                {
+                    visibilityCondition.id = this.generateAndSaveID(visibilityCondition.id)
+                }
+            }
         }
 
         for (let startCondition of conditions.AvailableForStart)
         {
-			let newStartID = this.hashUtil.generate()
-			this.changedQuestIds.set(`${startCondition.id}`, newStartID)
-            startCondition.id = newStartID
+            startCondition.id = this.generateAndSaveID(startCondition.id)
+
+            if(startCondition.visibilityConditions.length > 0)
+            {
+                for(let visibilityCondition of startCondition.visibilityConditions)
+                {
+                    visibilityCondition.id = this.generateAndSaveID(visibilityCondition.id)
+                }
+            }
         }
 
         for (let failCondition of conditions.Fail)
         {
-			let newFailID = this.hashUtil.generate()
-			this.changedQuestIds.set(`${failCondition.id}`, newFailID)
-            failCondition.id = newFailID
+            failCondition.id = this.generateAndSaveID(failCondition.id)
+            if(failCondition.visibilityConditions.length > 0)
+            {
+                for(let visibilityCondition of failCondition.visibilityConditions)
+                {
+                    visibilityCondition.id = this.generateAndSaveID(visibilityCondition.id)
+                }
+            }
         }
         return conditions
     }
@@ -216,18 +232,26 @@ class MongoFixer implements IPostDBLoadMod
     {
         for (let reward of rewards)
         {
-			let newRewardID = this.hashUtil.generate()
-			this.changedQuestIds.set(`${reward.id}`, newRewardID)
-            reward.id = newRewardID
+            reward.id = this.generateAndSaveID(reward.id)
             if (reward.items)
             {
-                let itemID = this.hashUtil.generate()
-				this.changedQuestIds.set(`${reward.items[0]._id}`, itemID)
-                reward.items[0]._id = itemID
-                reward.target = itemID
+                reward.target = this.generateAndSaveID(reward.target)
+                reward.items[0]._id = reward.target
             }
         }
         return rewards
+    }
+
+    /**
+     * Generates a new mongoID and saves it to changedQuestIds.
+     * @param oldID ID to change.
+     * @returns New mongoID.
+     */
+    private generateAndSaveID(oldID :string):string
+    {
+        let newID = this.hashUtil.generate()
+        this.changedQuestIds.set(`${oldID}`, newID)
+        return newID
     }
 
 	/**
@@ -260,18 +284,19 @@ class MongoFixer implements IPostDBLoadMod
 
 	/**
 	* Generates a backup of provided .json in /backups.
-	* @param name name for folder.
+	* @param folderName name for folder.
+    * @param fileName name for file.
 	* @param target target .json.
 	*/
-    private generateBackups(name: string, target: any): void
+    private generateBackups(folderName: string, fileName: string,target: any): void
     {
-        this.logger.info(`Backup generated for ${name} in /backups`)
-        this.fs.mkdir(path.resolve(__dirname, `../backups/${name}`), { recursive: true }, (err) =>
+        this.logger.info(`Backup generated for ${folderName} in /backups`)
+        this.fs.mkdir(path.resolve(__dirname, `../backups/${folderName}`), { recursive: true }, (err) =>
         {
             if (err) throw err
         })
 
-        this.fs.writeFile(path.resolve(__dirname, `../backups/${name}/assort.json`), JSON.stringify(target, null, "\t"), (err) =>
+        this.fs.writeFile(path.resolve(__dirname, `../backups/${folderName}/${fileName}.json`), JSON.stringify(target, null, "\t"), (err) =>
         {
             if (err) throw err
         })
