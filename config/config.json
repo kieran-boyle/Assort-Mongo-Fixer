@@ -4,20 +4,20 @@
   "assortsFolderPath": "Lotus",
   "baseJsonPaths":
   [
-    "/db/base.json"
+    "db/base.json"
   ],
   "assortPaths": 
   [
-    "/db/assort.json"
+    "db/assort.json"
   ],
   "questAssortPaths":
   [
-    "/db/questassort.json"
+    "db/questassort.json"
   ],
 
   "fixQuests": true,
   "questsFolderPaths":
   [
-    "/Lotus_quests.json"
+    "Lotus_quests.json"
   ]
 }

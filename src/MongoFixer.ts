@@ -12,6 +12,7 @@ class MongoFixer implements IPostDBLoadMod
     private logger: ILogger
     private hashUtil: HashUtil
     private validateMongo = /^[a-f\d]{24}$/i
+    private timestamp = Date.now()
     private changedAssortIds = new Map()
 	private changedQuestIds = new Map()
     private traderIDs = new Map()
@@ -29,7 +30,7 @@ class MongoFixer implements IPostDBLoadMod
         
         for (const file of this.config.baseJsonPaths)
         {
-            const fullPath = `../../${this.config.assortsFolderPath}${file}`
+            const fullPath = `../../${this.config.assortsFolderPath}/${file}`
             const importedJson = require(fullPath)
             let newID = this.hashUtil.generate()
             this.traderIDs.set(importedJson._id, newID)
@@ -54,7 +55,7 @@ class MongoFixer implements IPostDBLoadMod
     {
         for (const file of this.config.assortPaths)
         {
-            const fullPath = `../../${this.config.assortsFolderPath}${file}`
+            const fullPath = `../../${this.config.assortsFolderPath}/${file}`
             const importedJson = require(fullPath)
             const fileTarget = this.extractName(file)
             let count = 0
@@ -96,13 +97,14 @@ class MongoFixer implements IPostDBLoadMod
 
     private fixQuests():void
     {
-        const questsPath = "../../Virtual's Custom Quest Loader/database/quests"
+        const questsPath = "../../Virtual's Custom Quest Loader/database/quests/"
 
         for (const questJson of this.config.questsFolderPaths)
         {
-            const fullPath = `${questsPath}/${questJson}`
+            const fullPath = `${questsPath}${questJson}`
             const importedJson = require(fullPath)
-			const fileTarget = this.extractName(questJson)
+            console.log(fullPath)
+			const fileTarget = this.extractName(`/${questJson}`)
 			if(!fileTarget)
 			{
 				this.logger.error(`Error, file not found -- ${questJson}`)
@@ -160,7 +162,7 @@ class MongoFixer implements IPostDBLoadMod
                         this.logger.error(`Error, file not found -- ${file}`)
                         return
                     }
-                    const questPath = `../../${this.config.assortsFolderPath}${file}`
+                    const questPath = `../../${this.config.assortsFolderPath}/${file}`
                     const questJson = require(questPath)
                     this.generateBackups("quest assorts", fileTarget, questJson)
                     questJson.started = this.setNewAssortIDs(questJson.started)
@@ -317,19 +319,21 @@ class MongoFixer implements IPostDBLoadMod
     * @param fileName name for file.
 	* @param target target .json.
 	*/
-    private generateBackups(folderName: string, fileName: string,target: any): void
-    {
-        this.logger.info(`Backup generated for ${folderName}/${fileName} in /backups`)
-        this.fs.mkdir(path.resolve(__dirname, `../backups/${folderName}`), { recursive: true }, (err) =>
-        {
+    private generateBackups(folderName: string, fileName: string, target: any): void {
+        this.logger.info(`Backup generated for ${folderName}/${fileName} in /backups`)        
+        const backupFolderPath = path.resolve(__dirname, `../backups/${this.timestamp}/${folderName}`)
+    
+        this.fs.mkdir(backupFolderPath, { recursive: true }, (err) => {
             if (err) throw err
-        })
-
-        this.fs.writeFile(path.resolve(__dirname, `../backups/${folderName}/${fileName}.json`), JSON.stringify(target, null, "\t"), (err) =>
-        {
-            if (err) throw err
+    
+            const backupFilePath = path.resolve(backupFolderPath, `${fileName}.json`)
+            
+            this.fs.writeFile(backupFilePath, JSON.stringify(target, null, "\t"), (err) => {
+                if (err) throw err
+            })
         })
     }
+        
 
 	/**
 	* Writes the assort file in the target mod.
