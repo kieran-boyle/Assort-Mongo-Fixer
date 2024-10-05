@@ -33,24 +33,24 @@ class MongoFixer implements IPostDBLoadMod
             const importedJson = require(fullPath)
             let newID = this.hashUtil.generate()
             this.traderIDs.set(importedJson._id, newID)
-            console.log(this.traderIDs)
+            const fileTarget = this.extractName(file)
             importedJson._id = newID
             this.writeUpdatedData(fullPath, importedJson)
+            this.generateBackups("traderIDs", fileTarget, [...this.traderIDs])
         }
-        this.generateBackups("traderIDs", "IDs", [...this.traderIDs])
         
         if (this.config.fixAssorts === true)
         {
-            this.fixAssorts(container)
+            this.fixAssorts()
         }
 
         if (this.config.fixQuests === true)
         {
-            this.fixQuests(container)
+            this.fixQuests()
         }
     }
 
-    private fixAssorts(container: DependencyContainer):void
+    private fixAssorts():void
     {
         for (const file of this.config.assortPaths)
         {
@@ -94,7 +94,7 @@ class MongoFixer implements IPostDBLoadMod
         }
     }
 
-    private fixQuests(container: DependencyContainer):void
+    private fixQuests():void
     {
         const questsPath = "../../Virtual's Custom Quest Loader/database/quests"
 
@@ -319,7 +319,7 @@ class MongoFixer implements IPostDBLoadMod
 	*/
     private generateBackups(folderName: string, fileName: string,target: any): void
     {
-        this.logger.info(`Backup generated for ${folderName} in /backups`)
+        this.logger.info(`Backup generated for ${folderName}/${fileName} in /backups`)
         this.fs.mkdir(path.resolve(__dirname, `../backups/${folderName}`), { recursive: true }, (err) =>
         {
             if (err) throw err

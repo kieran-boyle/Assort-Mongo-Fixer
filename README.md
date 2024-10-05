@@ -1,6 +1,15 @@
 If config.enableFixer is not set to true, this mod will do nothing.
 
 
+WARNING!! 
+
+The server will crash on using this mod, due to changing the trader name in base.json.  You are required to restart the server for the changes to have taken effect anyway, so a hard crash is a good thing!
+You MUST then set config.enableFixer to false before starting the server for your changes to of taken effect.
+
+
+IMPORTANT.
+Writing the json files can take a moment if there are many files to be written.  Please ensure all folders in backups have had their .json file assigned to them before closing the server.
+
 ASSORTS.
 
 If you have Assort files to fix, set fixAssorts to true in the config.
@@ -47,11 +56,6 @@ Your original quests.json file will then be overwritten with the new data!
 
 When your new files have been written, you should shutdown the server, and set config.enableFixer to false to stop it running again at launch, before testing your new files!
 
-
-WARNING!! 
-
-The server will crash on using this mod, due to changing the trader name in base.json.  You are required to restart the server for the changes to have taken effect anyway, so a hard crash is a good thing!
-You MUST then set config.enableFixer to false before starting the server for your changes to of taken effect.
 
 CREDITS
 
