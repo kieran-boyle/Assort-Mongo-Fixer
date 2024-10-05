@@ -1,5 +1,6 @@
 {
   "enableFixer": true,
+
   "fixAssorts": true,
   "assortsFolderPath": "Lotus",
   "baseJsonPaths":
@@ -19,5 +20,13 @@
   "questsFolderPaths":
   [
     "Lotus_quests.json"
+  ],
+  "questsLocalesPaths":
+  [
+    "LotusLocale.json"
+  ],
+  "questsLocalesLanguages":
+  [
+    "en"
   ]
 }

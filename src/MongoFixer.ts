@@ -179,6 +179,32 @@ class MongoFixer implements IPostDBLoadMod
                     this.writeUpdatedData(questPath, modifiedQuestAssortData)
                 }
             }
+
+            //Fix quest Locales.
+            if (this.config.questsLocalesPaths.length > 0)
+            {
+                const localesPath = "../../Virtual's Custom Quest Loader/database/locales"
+
+                for (const file of this.config.questsLocalesPaths)
+                {
+                    for (const language of this.config.questsLocalesLanguages)
+                    {
+                        let fileTarget = this.extractName(`/${file}`)
+                        let languagePath = `${localesPath}/${language}/${file}`
+                        let localesJson = require(languagePath)
+
+                        this.generateBackups("quest locales", `${fileTarget}-${language}`, localesJson)
+                        let localesString = JSON.stringify(localesJson)
+                        console.log(localesString)
+                        for(const [oldID, newID] of this.changedQuestIds.entries())
+                        {
+                            localesString = localesString.replaceAll(`"${oldID}"`, `"${newID}"`)
+                        }
+                        let modifiedLocales = JSON.parse(localesString)
+                        this.writeUpdatedData(languagePath, modifiedLocales)
+                    }
+                }
+            }
         }
     }
 
@@ -210,7 +236,6 @@ class MongoFixer implements IPostDBLoadMod
                 }
             }
         }
-
         for (let startCondition of conditions.AvailableForStart)
         {
             startCondition.id = this.generateAndSaveID(startCondition.id)
@@ -223,7 +248,6 @@ class MongoFixer implements IPostDBLoadMod
                 }
             }
         }
-
         for (let failCondition of conditions.Fail)
         {
             failCondition.id = this.generateAndSaveID(failCondition.id)
@@ -319,16 +343,19 @@ class MongoFixer implements IPostDBLoadMod
     * @param fileName name for file.
 	* @param target target .json.
 	*/
-    private generateBackups(folderName: string, fileName: string, target: any): void {
+    private generateBackups(folderName: string, fileName: string, target: any): void 
+    {
         this.logger.info(`Backup generated for ${folderName}/${fileName} in /backups`)        
         const backupFolderPath = path.resolve(__dirname, `../backups/${this.timestamp}/${folderName}`)
     
-        this.fs.mkdir(backupFolderPath, { recursive: true }, (err) => {
+        this.fs.mkdir(backupFolderPath, { recursive: true }, (err) => 
+        {
             if (err) throw err
     
             const backupFilePath = path.resolve(backupFolderPath, `${fileName}.json`)
             
-            this.fs.writeFile(backupFilePath, JSON.stringify(target, null, "\t"), (err) => {
+            this.fs.writeFile(backupFilePath, JSON.stringify(target, null, "\t"), (err) => 
+            {
                 if (err) throw err
             })
         })
