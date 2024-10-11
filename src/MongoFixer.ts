@@ -27,7 +27,8 @@ class MongoFixer implements IPostDBLoadMod
         {
             return
         }
-        
+
+        //Fix base trader ID.
         for (const file of this.config.baseJsonPaths)
         {
             const fullPath = `../../${this.config.assortsFolderPath}/${file}`
@@ -39,7 +40,7 @@ class MongoFixer implements IPostDBLoadMod
             this.writeUpdatedData(fullPath, importedJson)
             this.generateBackups("traderIDs", fileTarget, [...this.traderIDs])
         }
-        
+
         if (this.config.fixAssorts === true)
         {
             this.fixAssorts()
@@ -48,7 +49,66 @@ class MongoFixer implements IPostDBLoadMod
         if (this.config.fixQuests === true)
         {
             this.fixQuests()
+            
+            if (this.config.questAssortPaths.length > 0)
+            {
+                this.fixQuestAssorts(this.config.questAssortPaths)
+            }
+            if (this.config.questsLocalesPaths.length > 0)
+            {
+                this.fixLocales(this.config.questsLocalesPaths)
+            }
         }
+    }
+
+    /**
+	* Pulls the file name from provided string ending in .json.
+	* @param url target filename.
+	* @returns filename as string || null if not found.
+	*/
+    private extractName(url: string): string | null
+    {
+        const regex = /\/([^\/]+)\.json$/
+        const match = url.match(regex)
+        return match ? match[1] : null
+    }
+
+	/**
+	* Writes the assort file in the target mod.
+	* @param target target.
+	* @param data updated data to write.
+	*/
+    private writeUpdatedData(target: string, data: any): void
+    {
+        this.fs.writeFile(path.resolve(__dirname, target), JSON.stringify(data, null, "\t"), (err) =>
+        {
+            if (err) throw (err)
+        })
+        this.logger.info(`New Id's written to ${target}`)
+    }
+
+	/**
+	* Generates a backup of provided .json in /backups.
+	* @param folderName name for folder.
+    * @param fileName name for file.
+	* @param target target .json.
+	*/
+    private generateBackups(folderName: string, fileName: string, target: any): void
+    {
+        this.logger.info(`Backup generated for ${folderName}/${fileName} in /backups`)
+        const backupFolderPath = path.resolve(__dirname, `../backups/${this.timestamp}/${folderName}`)
+
+        this.fs.mkdir(backupFolderPath, { recursive: true }, (err) =>
+        {
+            if (err) throw err
+
+            const backupFilePath = path.resolve(backupFolderPath, `${fileName}.json`)
+
+            this.fs.writeFile(backupFilePath, JSON.stringify(target, null, "\t"), (err) =>
+            {
+                if (err) throw err
+            })
+        })
     }
 
     private fixAssorts():void
@@ -95,6 +155,23 @@ class MongoFixer implements IPostDBLoadMod
         }
     }
 
+    /**
+	* Sets created MongoID's to target ID's.
+	* @param inputData Input data.
+	* @returns Modified json containing new MongoID's.
+	*/
+    private setNewAssortIDs(inputData: any): any
+    {
+        let modifiedData = {}
+
+        for (let item in inputData)
+        {
+            let newKey = this.changedAssortIds.get(item) || item
+            modifiedData[newKey] = inputData[item]
+        }
+        return modifiedData
+    }
+
     private fixQuests():void
     {
         const questsPath = "../../Virtual's Custom Quest Loader/database/quests/"
@@ -103,8 +180,8 @@ class MongoFixer implements IPostDBLoadMod
         {
             const fullPath = `${questsPath}${questJson}`
             const importedJson = require(fullPath)
-            console.log(fullPath)
 			const fileTarget = this.extractName(`/${questJson}`)
+
 			if(!fileTarget)
 			{
 				this.logger.error(`Error, file not found -- ${questJson}`)
@@ -149,63 +226,19 @@ class MongoFixer implements IPostDBLoadMod
             }
             let modifiedData = JSON.parse(dataString)
             this.writeUpdatedData(fullPath, modifiedData)
-            
-            // Fix quest assorts.
-            if (this.config.questAssortPaths.length > 0)
-            {
-                for (const file of this.config.questAssortPaths)
-                {
-                    const fileTarget = this.extractName(file)
-    
-                    if (!fileTarget)
-                    {
-                        this.logger.error(`Error, file not found -- ${file}`)
-                        return
-                    }
-                    const questPath = `../../${this.config.assortsFolderPath}/${file}`
-                    const questJson = require(questPath)
-                    this.generateBackups("quest assorts", fileTarget, questJson)
-                    questJson.started = this.setNewAssortIDs(questJson.started)
-                    questJson.success = this.setNewAssortIDs(questJson.success)
-                    questJson.fail = this.setNewAssortIDs(questJson.fail)
-                    this.writeUpdatedData(questPath, questJson)
-                    let questAssortDataString = JSON.stringify(questJson)
-
-                    for(const [oldID, newID] of this.changedQuestIds.entries())
-                    {
-                        questAssortDataString = questAssortDataString.replaceAll(`"${oldID}"`, `"${newID}"`)
-                    }
-                    let modifiedQuestAssortData = JSON.parse(questAssortDataString)
-                    this.writeUpdatedData(questPath, modifiedQuestAssortData)
-                }
-            }
-
-            //Fix quest Locales.
-            if (this.config.questsLocalesPaths.length > 0)
-            {
-                const localesPath = "../../Virtual's Custom Quest Loader/database/locales"
-
-                for (const file of this.config.questsLocalesPaths)
-                {
-                    for (const language of this.config.questsLocalesLanguages)
-                    {
-                        let fileTarget = this.extractName(`/${file}`)
-                        let languagePath = `${localesPath}/${language}/${file}`
-                        let localesJson = require(languagePath)
-
-                        this.generateBackups("quest locales", `${fileTarget}-${language}`, localesJson)
-                        let localesString = JSON.stringify(localesJson)
-                        console.log(localesString)
-                        for(const [oldID, newID] of this.changedQuestIds.entries())
-                        {
-                            localesString = localesString.replaceAll(`"${oldID}"`, `"${newID}"`)
-                        }
-                        let modifiedLocales = JSON.parse(localesString)
-                        this.writeUpdatedData(languagePath, modifiedLocales)
-                    }
-                }
-            }
         }
+    }
+
+    /**
+     * Generates a new mongoID and saves it to changedQuestIds.
+     * @param oldID ID to change.
+     * @returns New mongoID.
+     */
+    private generateAndSaveID(oldID :string):string
+    {
+        let newID = this.hashUtil.generate()
+        this.changedQuestIds.set(`${oldID}`, newID)
+        return newID
     }
 
 	/**
@@ -296,85 +329,74 @@ class MongoFixer implements IPostDBLoadMod
         return rewards
     }
 
-    /**
-     * Generates a new mongoID and saves it to changedQuestIds.
-     * @param oldID ID to change.
-     * @returns New mongoID.
-     */
-    private generateAndSaveID(oldID :string):string
+    private fixQuestAssorts(targets :any):void
     {
-        let newID = this.hashUtil.generate()
-        this.changedQuestIds.set(`${oldID}`, newID)
-        return newID
-    }
-
-	/**
-	* Pulls the file name from provided string ending in .json.
-	* @param url target filename.
-	* @returns filename as string || null if not found.
-	*/
-    private extractName(url: string): string | null
-    {
-        const regex = /\/([^\/]+)\.json$/
-        const match = url.match(regex)
-        return match ? match[1] : null
-    }
-
-	/**
-	* Sets created MongoID's to target ID's.
-	* @param inputData Input data.
-	* @returns Modified json containing new MongoID's.
-	*/
-    private setNewAssortIDs(inputData: any): any
-    {
-        let modifiedData = {}
-
-        for (let item in inputData)
+        for (const file of targets)
         {
-            let newKey = this.changedAssortIds.get(item) || item
-            modifiedData[newKey] = inputData[item]
-        }
-        return modifiedData
-    }
+            const fileTarget = this.extractName(file)
 
-	/**
-	* Generates a backup of provided .json in /backups.
-	* @param folderName name for folder.
-    * @param fileName name for file.
-	* @param target target .json.
-	*/
-    private generateBackups(folderName: string, fileName: string, target: any): void 
-    {
-        this.logger.info(`Backup generated for ${folderName}/${fileName} in /backups`)        
-        const backupFolderPath = path.resolve(__dirname, `../backups/${this.timestamp}/${folderName}`)
-    
-        this.fs.mkdir(backupFolderPath, { recursive: true }, (err) => 
-        {
-            if (err) throw err
-    
-            const backupFilePath = path.resolve(backupFolderPath, `${fileName}.json`)
-            
-            this.fs.writeFile(backupFilePath, JSON.stringify(target, null, "\t"), (err) => 
+            if (!fileTarget)
             {
-                if (err) throw err
-            })
-        })
-    }
-        
+                this.logger.error(`Error, file not found -- ${file}`)
+                return
+            }
+            const questPath = `../../${this.config.assortsFolderPath}/${file}`
+            const questJson = require(questPath)
+            this.generateBackups("quest assorts", fileTarget, questJson)
+            questJson.started = this.setNewAssortIDs(questJson.started)
+            questJson.success = this.setNewAssortIDs(questJson.success)
+            questJson.fail = this.setNewAssortIDs(questJson.fail)
+            let questAssortDataString = JSON.stringify(questJson)
 
-	/**
-	* Writes the assort file in the target mod.
-	* @param target target.
-	* @param data updated data to write.
-	*/
-    private writeUpdatedData(target: string, data: any): void
+            for(const [oldID, newID] of this.changedQuestIds.entries())
+            {
+                questAssortDataString = questAssortDataString.replaceAll(`"${oldID}"`, `"${newID}"`)
+            }
+            let modifiedQuestAssortData = JSON.parse(questAssortDataString)
+            this.writeUpdatedData(questPath, modifiedQuestAssortData)
+        }
+    }
+
+    private fixLocales(targets :any):void
     {
-        this.fs.writeFile(path.resolve(__dirname, target), JSON.stringify(data, null, "\t"), (err) =>
+        const localesPath = "../../Virtual's Custom Quest Loader/database/locales"
+        const allowedAfixes = ["name", "description", "successMessagetext", "failMessageText", "startedMessageText"]
+
+        for (const file of targets)
         {
-            if (err) throw (err)
-        })
-        this.logger.info(`New Id's written to ${target}`)
+            for (const language of this.config.questsLocalesLanguages)
+            {
+                let fileTarget = this.extractName(`/${file}`)
+                let languagePath = `${localesPath}/${language}/${file}`
+                let localesJson = require(languagePath)
+                let newLocales = {}
+                this.generateBackups("quest locales", `${fileTarget}-${language}`, localesJson)
+                
+                for(let [key, value] of Object.entries(localesJson))
+                {
+                    let splitKey = key.split(" ")
+
+                    if (this.validateMongo.test(splitKey[0]))
+                    {
+                        newLocales[key] = value
+                        continue
+                    }
+                    let newKey :string
+
+                    if (allowedAfixes.includes(splitKey[1]))
+                    {
+                        let questID = this.changedQuestIds.get(splitKey[0])
+                        newKey = key.replace(/^\S+/, questID)
+                    }
+                    else
+                    {
+                        newKey = this.changedQuestIds.get(key)
+                    }
+                    newLocales[newKey] = value
+                }                
+                this.writeUpdatedData(languagePath, newLocales)
+            }
+        }
     }
 }
-
 module.exports = { mod: new MongoFixer() }
