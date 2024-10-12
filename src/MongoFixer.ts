@@ -118,6 +118,7 @@ class MongoFixer implements IPostDBLoadMod
             const fullPath = `../../${this.config.assortsFolderPath}/${file}`
             const importedJson = require(fullPath)
             const fileTarget = this.extractName(file)
+            const backupCopy = JSON.parse(JSON.stringify(importedJson))
             let count = 0
 
             if (!fileTarget)
@@ -125,7 +126,7 @@ class MongoFixer implements IPostDBLoadMod
                 this.logger.error(`Error, file not found -- ${file}`)
                 return
             }
-            this.generateBackups("assorts", fileTarget, importedJson)
+            this.generateBackups("assorts", fileTarget, backupCopy)
 
             // Fix item ID's.
             for (let item of importedJson.items)
@@ -181,13 +182,14 @@ class MongoFixer implements IPostDBLoadMod
             const fullPath = `${questsPath}${questJson}`
             const importedJson = require(fullPath)
 			const fileTarget = this.extractName(`/${questJson}`)
+            const backupCopy = JSON.parse(JSON.stringify(importedJson))
 
 			if(!fileTarget)
 			{
 				this.logger.error(`Error, file not found -- ${questJson}`)
 				return
 			}
-			this.generateBackups("quests", fileTarget, importedJson)
+			this.generateBackups("quests", fileTarget, backupCopy)
 
             for (let quest in importedJson)
             {
@@ -342,7 +344,8 @@ class MongoFixer implements IPostDBLoadMod
             }
             const questPath = `../../${this.config.assortsFolderPath}/${file}`
             const questJson = require(questPath)
-            this.generateBackups("quest assorts", fileTarget, questJson)
+            const backupCopy = JSON.parse(JSON.stringify(questJson))
+            this.generateBackups("quest assorts", fileTarget, backupCopy)
             questJson.started = this.setNewAssortIDs(questJson.started)
             questJson.success = this.setNewAssortIDs(questJson.success)
             questJson.fail = this.setNewAssortIDs(questJson.fail)
@@ -369,8 +372,9 @@ class MongoFixer implements IPostDBLoadMod
                 let fileTarget = this.extractName(`/${file}`)
                 let languagePath = `${localesPath}/${language}/${file}`
                 let localesJson = require(languagePath)
+                const backupCopy = JSON.parse(JSON.stringify(localesJson))
                 let newLocales = {}
-                this.generateBackups("quest locales", `${fileTarget}-${language}`, localesJson)
+                this.generateBackups("quest locales", `${fileTarget}-${language}`, backupCopy)
                 
                 for(let [key, value] of Object.entries(localesJson))
                 {
@@ -391,6 +395,10 @@ class MongoFixer implements IPostDBLoadMod
                     else
                     {
                         newKey = this.changedQuestIds.get(key)
+                    }
+                    if (newKey == undefined)
+                    {
+                        this.logger.error(`newKey == undefined.  key = ${key}, value = ${value}`)
                     }
                     newLocales[newKey] = value
                 }                

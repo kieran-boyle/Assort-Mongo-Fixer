@@ -1,0 +1,9 @@
+newKey == undefined.  key = Lotus_ammogather AFF_0, value = Hand over Small 5.45x39mm Ammoboxes
+newKey == undefined.  key = Lotus_ammogather AFF_1, value = Hand over Large 5.45x39mm Ammoboxes
+newKey == undefined.  key = Lotus_light_12 AFF_6, value = Survive and Extract from Woods
+newKey == undefined.  key = Lotus_checkmate_1 AFF_8, value = Survive and Extract from Reserve
+newKey == undefined.  key = Lotus_checkmate_2 AFF_6, value = Survive and Extract from Reserve
+newKey == undefined.  key = Lotus_checkmate_3 AFF_11, value = Survive and Extract from Reserve
+newKey == undefined.  key = Lotus_checkmate_4 AFF_5, value = Survive and Extract from Reserve
+newKey == undefined.  key = Lotus_checkmate_5 AFF_2, value = Survive and Extract from Reserve
+newKey == undefined.  key = Lotus_checkmate_6 AFF_3, value = Survive and Extract from Reserve
